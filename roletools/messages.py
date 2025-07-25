@@ -408,12 +408,41 @@ class RoleToolsMessages(RoleToolsMixin):
     ) -> None:
         """
         Edit a bots message to include Role Buttons
-
+    
         `<message>` - The existing message to add role buttons to. Must be a bots message.
         `<buttons...>` - The names of the buttons you want to include up to a maximum of 25.
         """
-        buttons: List[ButtonRole] = list({b.custom_id: b for b in buttons}.values())
-        if not await self.check_totals(ctx, buttons=len(buttons), menus=0):
+        # Hol die Namen aus dem Converter, z.B. ["meinbutton", "toggle1"]
+        button_names = [getattr(b, "name", None) for b in buttons if hasattr(b, "name")]
+        # Erzeuge die richtigen Button-Objekte aus Registry:
+        registry = self.settings.get(ctx.guild.id, {}).get("buttons", {})
+        real_buttons = []
+        for name in button_names:
+            button_data = registry.get(name)
+            if not button_data:
+                continue
+            if button_data.get("type") == "toggle":
+                role1 = ctx.guild.get_role(button_data["role1_id"])
+                role2 = ctx.guild.get_role(button_data["role2_id"])
+                style = discord.ButtonStyle(button_data["style"])
+                label = button_data["label"]
+                btn = ToggleRoleButton(role1, role2, label=label, style=style)
+            else:
+                emoji = button_data.get("emoji")
+                if emoji is not None:
+                    emoji = discord.PartialEmoji.from_str(emoji)
+                btn = ButtonRole(
+                    style=button_data["style"],
+                    label=button_data["label"],
+                    emoji=emoji,
+                    custom_id=f"{name}-{button_data['role_id']}",
+                    role_id=button_data["role_id"],
+                    name=name,
+                )
+                btn.replace_label(ctx.guild)
+            real_buttons.append(btn)
+    
+        if not await self.check_totals(ctx, buttons=len(real_buttons), menus=0):
             return
         if ctx.guild.id not in self.views:
             self.views[ctx.guild.id] = {}
@@ -422,7 +451,7 @@ class RoleToolsMessages(RoleToolsMixin):
             await ctx.send(msg)
             return
         new_view = RoleToolsView(self)
-        for button in buttons:
+        for button in real_buttons:
             new_view.add_item(button)
         failed_to_edit = None
         try:
@@ -437,8 +466,8 @@ class RoleToolsMessages(RoleToolsMixin):
             )
         message_key = f"{message.channel.id}-{message.id}"
         await self.check_and_replace_existing(ctx.guild.id, message_key)
-
-        await self.save_settings(ctx.guild, message_key, buttons=buttons, select_menus=[])
+    
+        await self.save_settings(ctx.guild, message_key, buttons=real_buttons, select_menus=[])
         self.views[ctx.guild.id][message_key] = new_view
         if failed_to_edit:
             await ctx.send(

@@ -367,7 +367,7 @@ class RoleToolsButtons(RoleToolsMixin):
             [p]roletools buttons toggle hockeyfan @Rolle1 @Rolle2 label: Hockeyfan style: green
         """
     
-        label = getattr(extras, "label", "").strip() or f"{role1.name} ↔ {role2.name}"
+        label = (getattr(extras, "label", "") or "").strip() or f"{role1.name} ↔ {role2.name}"
         style = getattr(extras, "style", discord.ButtonStyle.secondary)
         if isinstance(style, int):
             style = discord.ButtonStyle(style)

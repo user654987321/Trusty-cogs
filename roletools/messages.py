@@ -415,8 +415,11 @@ class RoleToolsMessages(RoleToolsMixin):
         button_names = [getattr(b, "name", str(b)).lower() for b in buttons]
         registry = self.settings.get(ctx.guild.id, {}).get("buttons", {})
         real_buttons = []
+        await ctx.send(_(f"Button-Namen aus Command: {button_names}"))
+        await ctx.send(_(f"Registry Buttons: {list(registry.keys())}"))
         for name in button_names:
             button_data = registry.get(name)
+            await ctx.send(_(f"Suche Button: {name} -> {button_data}"))
             if not button_data:
                 continue
             if button_data.get("type") == "toggle":

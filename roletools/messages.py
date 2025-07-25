@@ -407,14 +407,12 @@ class RoleToolsMessages(RoleToolsMixin):
         buttons: commands.Greedy[ButtonRoleConverter],
     ) -> None:
         """
-        Edit a bots message to include Role Buttons
+        Edit a bots message to include Role Buttons (and Toggle Buttons!)
     
         `<message>` - The existing message to add role buttons to. Must be a bots message.
         `<buttons...>` - The names of the buttons you want to include up to a maximum of 25.
         """
-        # Hol die Namen aus dem Converter, z.B. ["meinbutton", "toggle1"]
-        button_names = [getattr(b, "name", None) for b in buttons if hasattr(b, "name")]
-        # Erzeuge die richtigen Button-Objekte aus Registry:
+        button_names = [getattr(b, "name", str(b)).lower() for b in buttons]
         registry = self.settings.get(ctx.guild.id, {}).get("buttons", {})
         real_buttons = []
         for name in button_names:
@@ -467,6 +465,7 @@ class RoleToolsMessages(RoleToolsMixin):
         message_key = f"{message.channel.id}-{message.id}"
         await self.check_and_replace_existing(ctx.guild.id, message_key)
     
+        # Die Speicherung in save_settings muss die richtigen Buttons bekommen!
         await self.save_settings(ctx.guild, message_key, buttons=real_buttons, select_menus=[])
         self.views[ctx.guild.id][message_key] = new_view
         if failed_to_edit:

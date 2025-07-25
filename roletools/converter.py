@@ -185,20 +185,40 @@ class ButtonRoleConverter(discord.app_commands.Transformer):
             if argument.lower() in buttons:
                 # log.debug("%s Button exists", argument.lower())
                 button_data = buttons[argument.lower()]
-                role_id = button_data["role_id"]
-                emoji = button_data["emoji"]
-                if emoji is not None:
-                    emoji = discord.PartialEmoji.from_str(emoji)
-                button = ButtonRole(
-                    style=button_data["style"],
-                    label=button_data["label"],
-                    emoji=emoji,
-                    custom_id=f"{argument.lower()}-{role_id}",
-                    role_id=role_id,
-                    name=argument.lower(),
-                )
-                button.replace_label(ctx.guild)
-                return button
+                # Prüfe ob Toggle-Button
+                if button_data.get("type") == "toggle":
+                    # Toggle-Button: zwei Rollen!
+                    role1 = ctx.guild.get_role(button_data["role1_id"])
+                    role2 = ctx.guild.get_role(button_data["role2_id"])
+                    style = discord.ButtonStyle(button_data["style"])
+                    label = button_data["label"]
+                    # Falls Rollen nicht existieren, Fehler ausgeben
+                    if not role1 or not role2:
+                        raise commands.BadArgument(
+                            _("Toggle-Button `{name}` ist fehlerhaft: Eine der Rollen existiert nicht.").format(
+                                name=argument.lower()
+                            )
+                        )
+                    # Achtung: ToggleRoleButton braucht ggf. name-Parameter!
+                    button = ToggleRoleButton(role1, role2, label=label, style=style, name=argument.lower())
+                    # Hier könntest du analog zu ButtonRole noch weitere Anpassungen machen, falls nötig
+                    return button
+                else:
+                    # Normaler Button wie gehabt
+                    role_id = button_data["role_id"]
+                    emoji = button_data["emoji"]
+                    if emoji is not None:
+                        emoji = discord.PartialEmoji.from_str(emoji)
+                    button = ButtonRole(
+                        style=button_data["style"],
+                        label=button_data["label"],
+                        emoji=emoji,
+                        custom_id=f"{argument.lower()}-{role_id}",
+                        role_id=role_id,
+                        name=argument.lower(),
+                    )
+                    button.replace_label(ctx.guild)
+                    return button
             else:
                 raise commands.BadArgument(
                     _("Button with name `{name}` does not seem to exist.").format(

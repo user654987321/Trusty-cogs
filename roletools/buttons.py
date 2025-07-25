@@ -6,6 +6,7 @@ from redbot.core import commands
 from redbot.core.commands import Context
 from redbot.core.i18n import Translator
 from redbot.core.utils.chat_formatting import pagify
+from .toggle_button import ToggleRoleButton
 
 from .abc import RoleToolsMixin
 from .components import ButtonRole, RoleToolsView
@@ -327,3 +328,26 @@ class RoleToolsButtons(RoleToolsMixin):
                     buttons[name]["messages"] = list(messages)
                     self.settings[guild.id]["buttons"][name]["messages"] = list(messages)
         await ctx.send(_("I am finished deleting old button message references."))
+        @buttons.command(name="toggle", usage="<name> <role1> <role2> [extras]")
+        async def create_toggle_button(
+            self,
+            ctx: Context,
+            name: str,
+            role1: RoleHierarchyConverter,
+            role2: RoleHierarchyConverter,
+            *,
+            extras: ButtonFlags,   # Optional für Label/Style/Emoji
+        ) -> None:
+            """
+            Create a toggle role button
+        
+            [p]roletools buttons toggle <name> <role1> <role2> [extras]
+            Beispiel:
+                [p]roletools buttons toggle hockeyfan @Rolle1 @Rolle2 label: Hockeyfan style: green
+            """
+            label = extras.label or f"{role1.name} ↔ {role2.name}"
+            style = extras.style.value if hasattr(extras, "style") else discord.ButtonStyle.primary
+        
+            view = discord.ui.View(timeout=180.0)
+            view.add_item(ToggleRoleButton(role1, role2, label=label, style=style))
+            await ctx.send("Hier ist dein Toggle-Button:", view=view)

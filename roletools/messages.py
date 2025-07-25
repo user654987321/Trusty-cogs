@@ -418,10 +418,15 @@ class RoleToolsMessages(RoleToolsMixin):
         for name in button_names:
             button_data = registry.get(name)
             if not button_data:
+                print(f"Button {name} nicht gefunden!")
                 continue
             if button_data.get("type") == "toggle":
                 role1 = ctx.guild.get_role(button_data["role1_id"])
                 role2 = ctx.guild.get_role(button_data["role2_id"])
+                print(f"Toggling: {name}, role1: {role1}, role2: {role2}")
+                if not role1 or not role2:
+                    print("ERROR: Eine der Rollen existiert nicht!")
+                    continue
                 style = discord.ButtonStyle(button_data["style"])
                 label = button_data["label"]
                 btn = ToggleRoleButton(role1, role2, label=label, style=style)
@@ -438,6 +443,7 @@ class RoleToolsMessages(RoleToolsMixin):
                     name=name,
                 )
                 btn.replace_label(ctx.guild)
+            print(f"Added button to view: {btn.label} ({type(btn)})")
             real_buttons.append(btn)
     
         if not await self.check_totals(ctx, buttons=len(real_buttons), menus=0):
@@ -451,6 +457,7 @@ class RoleToolsMessages(RoleToolsMixin):
         new_view = RoleToolsView(self)
         for button in real_buttons:
             new_view.add_item(button)
+        print(f"View children: {[type(child) for child in new_view.children]}")
         failed_to_edit = None
         try:
             await message.edit(view=new_view)

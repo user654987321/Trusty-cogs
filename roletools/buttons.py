@@ -29,39 +29,49 @@ class RoleToolsButtons(RoleToolsMixin):
                 self.views[guild_id] = {}
             for button_name, button_data in settings["buttons"].items():
                 log.verbose("Adding Button %s", button_name)
-                role_id = button_data["role_id"]
-                emoji = button_data["emoji"]
-                if emoji is not None:
-                    emoji = discord.PartialEmoji.from_str(emoji)
-
                 guild = self.bot.get_guild(guild_id)
                 for message_id in set(button_data.get("messages", [])):
-                    # we need a new instance of this object for every message
-                    button = ButtonRole(
-                        style=button_data["style"],
-                        label=button_data["label"],
-                        emoji=emoji,
-                        custom_id=f"{button_name}-{role_id}",
-                        role_id=role_id,
-                        name=button_name,
-                    )
-                    if guild is not None:
-                        button.replace_label(guild)
+                    # Toggle-Button
+                    if button_data.get("type") == "toggle":
+                        role1 = guild.get_role(button_data["role1_id"])
+                        role2 = guild.get_role(button_data["role2_id"])
+                        style = discord.ButtonStyle(button_data["style"])
+                        label = button_data["label"]
+                        button = ToggleRoleButton(role1, role2, label=label, style=style)
+                    else:
+                        # Normaler ButtonRole
+                        emoji = button_data.get("emoji")
+                        if emoji is not None:
+                            emoji = discord.PartialEmoji.from_str(emoji)
+                        button = ButtonRole(
+                            style=button_data["style"],
+                            label=button_data["label"],
+                            emoji=emoji,
+                            custom_id=f"{button_name}-{button_data['role_id']}",
+                            role_id=button_data["role_id"],
+                            name=button_name,
+                        )
+                        if guild is not None:
+                            button.replace_label(guild)
+                    # View erzeugen/füllen
                     if message_id not in self.views[guild_id]:
                         log.trace("Creating view for button %s", button_name)
                         self.views[guild_id][message_id] = RoleToolsView(self)
-                    if button.custom_id not in {
-                        c.custom_id for c in self.views[guild_id][message_id].children
-                    }:
-                        try:
-                            self.views[guild_id][message_id].add_item(button)
-                        except ValueError:
-                            log.error(
-                                "There was an error adding button %s on message https://discord.com/channels/%s/%s",
-                                button.name,
-                                guild_id,
-                                message_id.replace("-", "/"),
-                            )
+                    # Duplikate vermeiden
+                    custom_id = getattr(button, "custom_id", None)
+                    if custom_id is not None:
+                        existing_ids = {getattr(c, "custom_id", None) for c in self.views[guild_id][message_id].children}
+                        if custom_id in existing_ids:
+                            continue
+                    try:
+                        self.views[guild_id][message_id].add_item(button)
+                    except ValueError:
+                        log.error(
+                            "There was an error adding button %s on message https://discord.com/channels/%s/%s",
+                            button.name,
+                            guild_id,
+                            message_id.replace("-", "/"),
+                        )
 
     @roletools.group(name="buttons", aliases=["button"], with_app_command=False)
     @commands.admin_or_permissions(manage_roles=True)
@@ -225,9 +235,10 @@ class RoleToolsButtons(RoleToolsMixin):
         View current buttons setup for role assign in this server.
         """
         no_buttons = _("There are no button roles on this server.")
-        if ctx.guild.id not in self.settings:
+        if ctx.guild.id not in self.settings or not self.settings[ctx.guild.id].get("buttons"):
             await ctx.send(no_buttons)
             return
+    
         pages = []
         colour_index = {
             1: "blurple",
@@ -235,46 +246,69 @@ class RoleToolsButtons(RoleToolsMixin):
             3: "green",
             4: "red",
         }
+    
         for name, button_data in self.settings[ctx.guild.id]["buttons"].items():
-            msg = _("Button Roles in {guild}\n").format(guild=ctx.guild.name)
-            role = ctx.guild.get_role(button_data["role_id"])
-            emoji = button_data["emoji"]
-            if emoji is not None:
-                emoji = discord.PartialEmoji.from_str(emoji)
-            style = colour_index[button_data["style"]]
-            msg += _(
-                "**Name:** {name}\n**Role:** {role}\n**Label:** {label}\n"
-                "**Style:** {style}\n**Emoji:** {emoji}\n"
-            ).format(
-                name=name,
-                role=role.mention if role else _("Missing Role"),
-                label=button_data["label"],
-                style=style,
-                emoji=emoji,
-            )
-            for messages in button_data["messages"]:
-                channel_id, msg_id = messages.split("-")
-
-                channel = ctx.guild.get_channel(int(channel_id))
-                if channel:
-                    # This can be potentially a very expensive operation
-                    # so instead we fake the message link unless the channel is missing
-                    # this way they can check themselves without rate limitng
-                    # the bot trying to fetch something constantly that is broken.
-                    message = f"https://discord.com/channels/{ctx.guild.id}/{channel_id}/{msg_id}"
-                else:
-                    message = "None"
-                msg += _("[Button Message]({message})\n").format(
-                    message=message,
+            # Toggle-Button anzeigen
+            if button_data.get("type") == "toggle":
+                role1 = ctx.guild.get_role(button_data["role1_id"])
+                role2 = ctx.guild.get_role(button_data["role2_id"])
+                style = colour_index.get(button_data["style"], button_data["style"])
+                msg = _(
+                    "**Toggle-Button in {guild}**\n"
+                    "**Name:** {name}\n"
+                    "**Rollen:** {role1} ↔ {role2}\n"
+                    "**Label:** {label}\n"
+                    "**Style:** {style}\n"
+                ).format(
+                    guild=ctx.guild.name,
+                    name=name,
+                    role1=role1.mention if role1 else _("Fehlt"),
+                    role2=role2.mention if role2 else _("Fehlt"),
+                    label=button_data["label"],
+                    style=style,
                 )
+                for messages in button_data.get("messages", []):
+                    channel_id, msg_id = messages.split("-")
+                    channel = ctx.guild.get_channel(int(channel_id))
+                    if channel:
+                        message_url = f"https://discord.com/channels/{ctx.guild.id}/{channel_id}/{msg_id}"
+                    else:
+                        message_url = "None"
+                    msg += _("[Button Message]({message})\n").format(message=message_url)
+            else:
+                # Normale Button-Ausgabe wie bisher
+                role = ctx.guild.get_role(button_data["role_id"])
+                emoji = button_data["emoji"]
+                if emoji is not None:
+                    emoji = discord.PartialEmoji.from_str(emoji)
+                style = colour_index.get(button_data["style"], button_data["style"])
+                msg = _("Button Roles in {guild}\n").format(guild=ctx.guild.name)
+                msg += _(
+                    "**Name:** {name}\n**Role:** {role}\n**Label:** {label}\n"
+                    "**Style:** {style}\n**Emoji:** {emoji}\n"
+                ).format(
+                    name=name,
+                    role=role.mention if role else _("Missing Role"),
+                    label=button_data["label"],
+                    style=style,
+                    emoji=emoji,
+                )
+                for messages in button_data.get("messages", []):
+                    channel_id, msg_id = messages.split("-")
+                    channel = ctx.guild.get_channel(int(channel_id))
+                    if channel:
+                        message_url = f"https://discord.com/channels/{ctx.guild.id}/{channel_id}/{msg_id}"
+                    else:
+                        message_url = "None"
+                    msg += _("[Button Message]({message})\n").format(message=message_url)
             pages.append(msg)
+    
         if not pages:
             await ctx.send(no_buttons)
             return
+    
         await BaseMenu(
-            source=ButtonRolePages(
-                pages=pages,
-            ),
+            source=ButtonRolePages(pages=pages),
             delete_message_after=False,
             clear_reactions_after=True,
             timeout=60,
@@ -298,11 +332,29 @@ class RoleToolsButtons(RoleToolsMixin):
         Beispiel:
             [p]roletools buttons toggle hockeyfan @Rolle1 @Rolle2 label: Hockeyfan style: green
         """
+    
         label = extras.label.strip() if getattr(extras, "label", None) and extras.label.strip() else f"{role1.name} ↔ {role2.name}"
         style = getattr(extras, "style", discord.ButtonStyle.primary)
         if isinstance(style, int):
             style = discord.ButtonStyle(style)
     
+        # 1. Toggle-Daten speichern
+        toggle_settings = {
+            "role1_id": role1.id,
+            "role2_id": role2.id,
+            "label": label,
+            "style": style.value,
+            "name": name.lower(),
+            "type": "toggle",           # <-- Wichtig: als Toggle markieren!
+            "messages": [],
+        }
+        async with self.config.guild(ctx.guild).buttons() as buttons:
+            buttons[name.lower()] = toggle_settings
+        if ctx.guild.id not in self.settings:
+            self.settings[ctx.guild.id] = await self.config.guild(ctx.guild).all()
+        self.settings[ctx.guild.id]["buttons"][name.lower()] = toggle_settings
+    
+        # 2. Preview (wie gehabt)
         view = discord.ui.View(timeout=180.0)
         view.add_item(ToggleRoleButton(role1, role2, label=label, style=style))
         await ctx.send("Hier ist dein Toggle-Button:", view=view)

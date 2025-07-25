@@ -298,7 +298,7 @@ class RoleToolsButtons(RoleToolsMixin):
         Beispiel:
             [p]roletools buttons toggle hockeyfan @Rolle1 @Rolle2 label: Hockeyfan style: green
         """
-        label = extras.label or f"{role1.name} ↔ {role2.name}"
+        label = extras.label.strip() if getattr(extras, "label", None) and extras.label.strip() else f"{role1.name} ↔ {role2.name}"
         style = getattr(extras, "style", discord.ButtonStyle.primary)
         if isinstance(style, int):
             style = discord.ButtonStyle(style)

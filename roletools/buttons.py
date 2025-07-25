@@ -299,7 +299,9 @@ class RoleToolsButtons(RoleToolsMixin):
             [p]roletools buttons toggle hockeyfan @Rolle1 @Rolle2 label: Hockeyfan style: green
         """
         label = extras.label or f"{role1.name} ↔ {role2.name}"
-        style = extras.style.value if hasattr(extras, "style") else discord.ButtonStyle.primary
+        style = getattr(extras, "style", discord.ButtonStyle.primary)
+        if isinstance(style, int):
+            style = discord.ButtonStyle(style)
     
         view = discord.ui.View(timeout=180.0)
         view.add_item(ToggleRoleButton(role1, role2, label=label, style=style))

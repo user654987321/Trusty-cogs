@@ -392,7 +392,12 @@ class RoleToolsButtons(RoleToolsMixin):
         # 2. Preview (wie gehabt)
         view = discord.ui.View(timeout=180.0)
         view.add_item(ToggleRoleButton(role1, role2, label=label, style=style))
-        await ctx.send("Hier ist dein Toggle-Button:", view=view)
+        embed = discord.Embed(
+            title="Level System",
+            description="Hier kannst du entscheiden ob du das Level System für dich aktivieren oder deaktivieren möchtest.",
+            color=discord.Color.green()  # oder eine andere Farbe
+        )
+        await ctx.send(embed=embed, view=view)
     @buttons.command(name="cleanup")
     @commands.admin_or_permissions(manage_roles=True)
     @commands.bot_has_permissions(read_message_history=True)

@@ -376,7 +376,7 @@ class RoleToolsButtons(RoleToolsMixin):
         toggle_settings = {
             "role1_id": role1.id,
             "role2_id": role2.id,
-            "label": label,
+            "label": label.value,
             "style": style.value,
             "name": name.lower(),
             "type": "toggle",           # <-- Wichtig: als Toggle markieren!

@@ -404,7 +404,7 @@ class RoleToolsMessages(RoleToolsMixin):
         self,
         ctx: Context,
         message: discord.Message,
-        *button_names: str, 
+        buttons: commands.Greedy[ButtonRoleConverter],
     ) -> None:
         """
         Edit a bots message to include Role Buttons (and Toggle Buttons!)

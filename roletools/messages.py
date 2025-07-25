@@ -431,6 +431,7 @@ class RoleToolsMessages(RoleToolsMixin):
                 label = button_data["label"]
                 btn = ToggleRoleButton(role1, role2, label=label, style=style)
             else:
+                await ctx.send(_(f"else Button {name} nicht gefunden!"))
                 emoji = button_data.get("emoji")
                 if emoji is not None:
                     emoji = discord.PartialEmoji.from_str(emoji)

@@ -367,7 +367,7 @@ class RoleToolsButtons(RoleToolsMixin):
             [p]roletools buttons toggle hockeyfan @Rolle1 @Rolle2 label: Hockeyfan style: green
         """
     
-        label = (getattr(extras, "label", "") or "").strip() or f"{role1.name} ↔ {role2.name}"
+        label = (getattr(extras, "label", "") or "").strip() or f"Aktivieren ↔ Deaktivieren"
         style = getattr(extras, "style", discord.ButtonStyle.secondary)
         if isinstance(style, int):
             style = discord.ButtonStyle(style)
@@ -376,7 +376,7 @@ class RoleToolsButtons(RoleToolsMixin):
         toggle_settings = {
             "role1_id": role1.id,
             "role2_id": role2.id,
-            "label": label.value,
+            "label": label,
             "style": style.value,
             "name": name.lower(),
             "type": "toggle",           # <-- Wichtig: als Toggle markieren!

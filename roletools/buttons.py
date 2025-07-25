@@ -203,26 +203,53 @@ class RoleToolsButtons(RoleToolsMixin):
     async def delete_button(self, ctx: Context, *, name: str) -> None:
         """
         Delete a saved button.
-
+    
         `<name>` - the name of the button you want to delete.
         """
         if ctx.guild.id not in self.views:
             self.views[ctx.guild.id] = {}
         async with self.config.guild(ctx.guild).buttons() as buttons:
             if name in buttons:
-                role_id = buttons[name]["role_id"]
-                custom_id = f"{name.lower()}-{role_id}"
-                for view in self.views[ctx.guild.id].values():
-                    for child in view.children:
-                        if child.custom_id == custom_id:
-                            child.disabled = True
-                if name in self.settings.get(ctx.guild.id, {}).get("buttons", {}):
-                    del self.settings[ctx.guild.id]["buttons"][name]
-                del buttons[name]
-                async with self.config.role_from_id(role_id).buttons() as role_buttons:
-                    if name in role_buttons:
-                        role_buttons.remove(name)
-                msg = _("Button `{name}` has been deleted.").format(name=name)
+                button_data = buttons[name]
+                # Toggle-Button?
+                if button_data.get("type") == "toggle":
+                    # Toggle-Buttons haben zwei Rollen
+                    role_id_1 = button_data["role1_id"]
+                    role_id_2 = button_data["role2_id"]
+                    custom_id_1 = f"{name.lower()}-{role_id_1}"
+                    custom_id_2 = f"{name.lower()}-{role_id_2}"
+                    # Deaktiviere alle Instanzen des Buttons in allen Views (für beide Rollen)
+                    for view in self.views[ctx.guild.id].values():
+                        for child in view.children:
+                            if getattr(child, "custom_id", None) in [custom_id_1, custom_id_2]:
+                                child.disabled = True
+                    # Entferne aus settings/registry
+                    if name in self.settings.get(ctx.guild.id, {}).get("buttons", {}):
+                        del self.settings[ctx.guild.id]["buttons"][name]
+                    del buttons[name]
+                    # Entferne aus allen Rollen-Registries (falls vorhanden)
+                    async with self.config.role_from_id(role_id_1).buttons() as role_buttons_1:
+                        if name in role_buttons_1:
+                            role_buttons_1.remove(name)
+                    async with self.config.role_from_id(role_id_2).buttons() as role_buttons_2:
+                        if name in role_buttons_2:
+                            role_buttons_2.remove(name)
+                    msg = _("Toggle-Button `{name}` has been deleted.").format(name=name)
+                else:
+                    # Normaler Button wie gehabt
+                    role_id = button_data["role_id"]
+                    custom_id = f"{name.lower()}-{role_id}"
+                    for view in self.views[ctx.guild.id].values():
+                        for child in view.children:
+                            if getattr(child, "custom_id", None) == custom_id:
+                                child.disabled = True
+                    if name in self.settings.get(ctx.guild.id, {}).get("buttons", {}):
+                        del self.settings[ctx.guild.id]["buttons"][name]
+                    del buttons[name]
+                    async with self.config.role_from_id(role_id).buttons() as role_buttons:
+                        if name in role_buttons:
+                            role_buttons.remove(name)
+                    msg = _("Button `{name}` has been deleted.").format(name=name)
             else:
                 msg = _("Button `{name}` doesn't appear to exist.").format(name=name)
         await ctx.send(msg)

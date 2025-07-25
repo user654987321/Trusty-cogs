@@ -37,7 +37,14 @@ class RoleToolsButtons(RoleToolsMixin):
                         role2 = guild.get_role(button_data["role2_id"])
                         style = discord.ButtonStyle(button_data["style"])
                         label = button_data["label"]
-                        button = ToggleRoleButton(role1, role2, label=label, style=style)
+                        button = ButtonRole(
+                            style=button_data["style"],
+                            label=button_data["label"],
+                            emoji=emoji,
+                            custom_id=f"{button_name}-{button_data['role_id']}",
+                            role_id=button_data["role_id1"],
+                            name=button_name,
+                        )
                     else:
                         # Normaler ButtonRole
                         emoji = button_data.get("emoji")

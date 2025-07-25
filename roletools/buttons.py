@@ -375,6 +375,7 @@ class RoleToolsButtons(RoleToolsMixin):
             "type": "toggle",           # <-- Wichtig: als Toggle markieren!
             "messages": [],
         }
+        custom_id = f"{name.lower()}-{role1.id}"
         async with self.config.guild(ctx.guild).buttons() as buttons:
             buttons[name.lower()] = toggle_settings
         if ctx.guild.id not in self.settings:
